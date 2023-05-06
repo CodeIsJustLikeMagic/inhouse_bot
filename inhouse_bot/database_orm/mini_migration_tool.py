@@ -1,6 +1,6 @@
 import os
 import sqlalchemy
-
+from sqlalchemy import text
 from inhouse_bot.database_orm import bot_declarative_base
 
 
@@ -16,4 +16,5 @@ def migrate():
     # Checking the duo_id column in QueuePlayer, added on December 10 2020
     duo_column_query = """ALTER TABLE queue_player ADD COLUMN IF NOT EXISTS duo_id BIGINT"""
 
-    engine.execute(duo_column_query)
+    with engine.connect() as conn:
+        result = conn.execute(text(duo_column_query))

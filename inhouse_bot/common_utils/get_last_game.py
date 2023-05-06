@@ -17,3 +17,17 @@ def get_last_game(
         None,
         None,
     )  # To not have unpacking errors
+
+def get_last_game_admin(
+    server_id: int, session
+) -> Tuple[Optional[Game], Optional[GameParticipant]]:
+    return (
+        session.query(Game, GameParticipant)
+        .select_from(Game)
+        .join(GameParticipant)
+        .filter(Game.server_id == server_id)
+        .order_by(Game.start.desc())
+    ).first() or (
+        None,
+        None,
+    )

@@ -1,3 +1,5 @@
+import discord
+
 from inhouse_bot.inhouse_bot import InhouseBot
 import logging
 

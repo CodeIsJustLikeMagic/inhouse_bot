@@ -8,12 +8,13 @@ from inhouse_bot import game_queue, matchmaking_logic
 from inhouse_bot.database_orm import session_scope
 from inhouse_bot.common_utils.constants import CONFIG_OPTIONS, PREFIX
 from inhouse_bot.common_utils.docstring import doc
-from inhouse_bot.common_utils.get_last_game import get_last_game
+from inhouse_bot.common_utils.get_last_game import get_last_game, get_last_game_admin
 from inhouse_bot.common_utils.get_server_config import get_server_config
 from inhouse_bot.inhouse_bot import InhouseBot
 from inhouse_bot.queue_channel_handler import queue_channel_handler
 from inhouse_bot.ranking_channel_handler.ranking_channel_handler import ranking_channel_handler
 from inhouse_bot.voice_channel_handler.voice_channel_handler import remove_voice_channels
+import logging
 
 
 class AdminCog(commands.Cog, name="Admin"):
@@ -23,9 +24,11 @@ class AdminCog(commands.Cog, name="Admin"):
 
     def __init__(self, bot: InhouseBot):
         self.bot = bot
+        self.logger = logging.getLogger("inhouse_bot")
+        self.logger.info("Admin Cog init")
 
     @commands.group(case_insensitive=True)
-    @commands.has_permissions(administrator=True)
+    @commands.has_permissions(administrator=True) # allow only admin (or just anyone, cuz I gotta test shit)
     @doc(f"Admin functions, use {PREFIX}help admin for a complete list")
     async def admin(self, ctx: commands.Context):
         if ctx.invoked_subcommand is None:
@@ -54,7 +57,7 @@ class AdminCog(commands.Cog, name="Admin"):
         elif type(member_or_channel) == discord.Member:
             game_queue.remove_player(member_or_channel.id)
             await ctx.send(f"{member_or_channel.name} has been removed from all queues")
-
+        logging.info("Admin Cog executed command reset")
         await queue_channel_handler.update_queue_channels(bot=self.bot, server_id=ctx.guild.id)
 
     @admin.command()
@@ -66,7 +69,7 @@ class AdminCog(commands.Cog, name="Admin"):
 
         matchmaking_logic.score_game_from_winning_player(player_id=member.id, server_id=ctx.guild.id)
         await ranking_channel_handler.update_ranking_channels(self.bot, ctx.guild.id)
-
+        logging.info("Admin Cog executed command won")
         await ctx.send(
             f"{member.display_name}’s last game has been scored as a win for his team "
             f"and ratings have been recalculated"
@@ -91,6 +94,19 @@ class AdminCog(commands.Cog, name="Admin"):
         await ctx.send(f"{member.display_name}’s ongoing game was cancelled and deleted from the database")
         await queue_channel_handler.update_queue_channels(bot=self.bot, server_id=ctx.guild.id)
         await remove_voice_channels(ctx, game)
+
+    @admin.command()
+    async def cancellast(self, ctx: commands.Context):
+        with session_scope() as session:
+            game, participant = get_last_game_admin(server_id=ctx.guild.id, session=session)
+
+            if game and game.winner:
+                await ctx.send("The game has already been scored and cannot be canceled anymore")
+                return
+
+            session.delete(game)
+        await ctx.send(f"The last ongoing game was cancelled and deleted from the database")
+        await queue_channel_handler.update_queue_channels(bot=self.bot, server_id=ctx.guild.id)
 
     @admin.command()
     @guild_only()

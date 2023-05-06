@@ -19,6 +19,7 @@ from inhouse_bot.queue_channel_handler import queue_channel_handler
 from inhouse_bot.queue_channel_handler.queue_channel_handler import queue_channel_only
 from inhouse_bot.ranking_channel_handler.ranking_channel_handler import ranking_channel_handler
 from inhouse_bot.voice_channel_handler.voice_channel_handler import create_voice_channels, remove_voice_channels
+import logging
 
 
 class QueueCog(commands.Cog, name="Queue"):
@@ -34,6 +35,8 @@ class QueueCog(commands.Cog, name="Queue"):
         self.players_whose_last_game_got_cancelled = {}
 
         self.games_getting_scored_ids = set()
+        self.logger = logging.getLogger("inhouse_bot")
+        self.logger.info("Queue Cog init")
 
     async def run_matchmaking_logic(
         self, ctx: commands.Context,
@@ -66,13 +69,16 @@ class QueueCog(commands.Cog, name="Queue"):
             # We update the queue in all channels
             await queue_channel_handler.update_queue_channels(bot=self.bot, server_id=ctx.guild.id)
 
+            print(f"player ids, to be validated: {game.player_ids_list}")
+            validation_check_ids = [discord_id for discord_id in game.player_ids_list if discord_id not in range(0,9)] # players created by !test queue have ids from 0 to 8
             # And then we wait for the validation
+            validation_threshhold = len(validation_check_ids) # the validation check number should ignore test-players
             try:
                 ready, players_to_drop = await checkmark_validation(
                     bot=self.bot,
                     message=ready_check_message,
                     validating_players_ids=game.player_ids_list,
-                    validation_threshold=10,
+                    validation_threshold=validation_threshhold,
                     game=game,
                 )
 
@@ -203,6 +209,8 @@ class QueueCog(commands.Cog, name="Queue"):
                 jump_ahead=jump_ahead,
             )
 
+            self.logger.info(f"player {ctx.author.display_name} added to queue in channel {ctx.channel.id}")
+
         # If there is a duo, we go for a different flow (which should likely be another function)
         else:
             if not duo_role:
@@ -237,6 +245,7 @@ class QueueCog(commands.Cog, name="Queue"):
                 server_id=ctx.guild.id,
                 jump_ahead=jump_ahead,
             )
+            self.logger.info(f"duo queued players added to queue in channel {ctx.channel.id}")
 
         await self.run_matchmaking_logic(ctx=ctx)
 
@@ -295,17 +304,23 @@ class QueueCog(commands.Cog, name="Queue"):
             else:
                 self.games_getting_scored_ids.add(game.id)
 
+            print(f"player ids, to be validated: {game.player_ids_list}")
+            validation_check_ids = [discord_id for discord_id in game.player_ids_list if discord_id not in range(0,9)] # players created by !test queue have ids from 0 to 8
+            # And then we wait for the validation
+            validation_threshhold = 6 if len(validation_check_ids)>1 else 1 # the validation check number should ignore test-players
+
             win_validation_message = await ctx.send(
                 f"{game.players_ping}"
                 f"{ctx.author.display_name} wants to score game {game.id} as a win for {participant.side}\n"
-                f"Result will be validated once 6 players from the game press ✅"
+                f"Result will be validated once {validation_threshhold} players from the game press ✅"
             )
+
 
             validated, players_who_refused = await checkmark_validation(
                 bot=self.bot,
                 message=win_validation_message,
-                validating_players_ids=game.player_ids_list,
-                validation_threshold=6,
+                validating_players_ids=validation_check_ids,
+                validation_threshold=validation_threshhold,
             )
 
             # Whatever happens, we’re not scoring it anymore if we get here
@@ -358,17 +373,22 @@ class QueueCog(commands.Cog, name="Queue"):
             else:
                 self.games_getting_scored_ids.add(game.id)
 
+            print(f"player ids, to be validated: {game.player_ids_list}")
+            validation_check_ids = [discord_id for discord_id in game.player_ids_list if discord_id not in range(0,9)] # players created by !test queue have ids from 0 to 8
+            # And then we wait for the validation
+            validation_threshhold = 6 if len(validation_check_ids)>1 else 1 # the validation check number should ignore test-players
+
             cancel_validation_message = await ctx.send(
                 f"{game.players_ping}"
                 f"{ctx.author.display_name} wants to cancel game {game.id}\n"
-                f"Game will be canceled once 6 players from the game press ✅"
+                f"Game will be canceled once {validation_threshhold} players from the game press ✅"
             )
 
             validated, players_who_refused = await checkmark_validation(
                 bot=self.bot,
                 message=cancel_validation_message,
                 validating_players_ids=game.player_ids_list,
-                validation_threshold=6,
+                validation_threshold=validation_threshhold,
             )
 
             self.games_getting_scored_ids.remove(game.id)

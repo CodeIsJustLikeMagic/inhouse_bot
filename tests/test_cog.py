@@ -13,7 +13,7 @@ from inhouse_bot.inhouse_bot import InhouseBot
 from inhouse_bot import game_queue, matchmaking_logic
 from inhouse_bot.queue_channel_handler import queue_channel_handler
 from inhouse_bot.ranking_channel_handler.ranking_channel_handler import ranking_channel_handler
-
+import logging
 
 class TestCog(commands.Cog, name="TEST"):
     """
@@ -24,6 +24,8 @@ class TestCog(commands.Cog, name="TEST"):
 
     def __init__(self, bot: InhouseBot):
         self.bot = bot
+        self.logger = logging.getLogger("inhouse_bot")
+        self.logger.info("Test Cog init")
 
     @group()
     async def test(self, ctx: commands.Context):
@@ -58,11 +60,11 @@ class TestCog(commands.Cog, name="TEST"):
         """
         Testing the queue pop message
         """
-        # We put 10 people in the queue
-        for i in range(0, 10):
+        # We put 9 people in the queue
+        for i in range(0, 9):
             game_queue.add_player(i, roles_list[i % 5], ctx.channel.id, ctx.guild.id, name=str(i))
 
-        await ctx.send("The queue has been filled")
+        await ctx.send("The queue has been filled. Join the Game yourself to start matchmaking.")
         await queue_channel_handler.update_queue_channels(bot=self.bot, server_id=ctx.guild.id)
 
     @test.command()
