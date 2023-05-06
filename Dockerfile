@@ -7,6 +7,10 @@ RUN pip install -r /requirements.txt
 # I’m using a single image at the moment, so I put pytest in it too
 RUN pip install pytest
 
+# Copying the tests source code
+WORKDIR /inhouse_bot
+COPY /inhouse_bot/ ./tests
+
 # Copying the bot source code
 WORKDIR /inhouse_bot
 COPY /inhouse_bot/ ./inhouse_bot
