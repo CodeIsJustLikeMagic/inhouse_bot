@@ -152,3 +152,4 @@ inhouse_bot_old/tests/local_db_sandbox.py
 data/
 *.db
 docker-compose.yml
+docker-compose.yml

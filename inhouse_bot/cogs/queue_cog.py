@@ -69,6 +69,7 @@ class QueueCog(commands.Cog, name="Queue"):
             # We update the queue in all channels
             await queue_channel_handler.update_queue_channels(bot=self.bot, server_id=ctx.guild.id)
 
+            # ready check to start game
             print(f"player ids, to be validated: {game.player_ids_list}")
             validation_check_ids = [discord_id for discord_id in game.player_ids_list if discord_id not in range(0,9)] # players created by !test queue have ids from 0 to 8
             # And then we wait for the validation
@@ -105,9 +106,10 @@ class QueueCog(commands.Cog, name="Queue"):
 
                 # We commit the game to the database (without a winner)
                 with session_scope() as session:
+                    logging.info(f"attempting to write game into postgress database with id {game.id}")
                     session.expire_on_commit = False
                     game = session.merge(game)  # This gets us the game ID
-
+                logging.info(f"managed to write game into postgress database. The game's id is: {game.id}")
                 queue_channel_handler.mark_queue_related_message(
                     await ctx.send(embed=game.get_embed("GAME_ACCEPTED"),)
                 )
