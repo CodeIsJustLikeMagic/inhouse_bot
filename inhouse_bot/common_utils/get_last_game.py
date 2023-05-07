@@ -31,3 +31,15 @@ def get_last_game_admin(
         None,
         None,
     )
+
+def get_last_game_any_server(
+    session
+) -> Optional[Game]:
+    return (
+        session.query(Game)
+        .select_from(Game)
+        .join(GameParticipant)
+        .order_by(Game.id.desc())
+    ).first() or (
+        None
+    )

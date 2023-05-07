@@ -10,7 +10,7 @@ from inhouse_bot.common_utils.constants import PREFIX
 from inhouse_bot.common_utils.docstring import doc
 from inhouse_bot.common_utils.emoji_and_thumbnails import get_role_emoji
 from inhouse_bot.common_utils.fields import RoleConverter
-from inhouse_bot.common_utils.get_last_game import get_last_game
+from inhouse_bot.common_utils.get_last_game import get_last_game, get_last_game_any_server
 from inhouse_bot.common_utils.validation_dialog import checkmark_validation
 
 from inhouse_bot.database_orm import session_scope
@@ -106,9 +106,15 @@ class QueueCog(commands.Cog, name="Queue"):
 
                 # We commit the game to the database (without a winner)
                 with session_scope() as session:
+                    last_game_any_server = get_last_game_any_server(session=session) # explicitly getting last used id, because database sometimes does not automatically do it in merge
+                    if last_game_any_server is None:
+                        last_id = 0
+                    else:
+                        last_id = last_game_any_server.id
+                    game.id = last_id + 1
                     logging.info(f"attempting to write game into postgress database with id {game.id}")
                     session.expire_on_commit = False
-                    game = session.merge(game)  # This gets us the game ID
+                    game = session.merge(game) # write game into database
                 logging.info(f"managed to write game into postgress database. The game's id is: {game.id}")
                 queue_channel_handler.mark_queue_related_message(
                     await ctx.send(embed=game.get_embed("GAME_ACCEPTED"),)
